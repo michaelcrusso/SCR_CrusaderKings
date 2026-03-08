@@ -568,6 +568,32 @@ function onPluginStart() {
 }
 
 function beforeTriggerExec() {
+    // Get the selected unit
+    // Rebuild into a separate function to dynamically generate duchy names
+    
+    
+    const selectedUnit = CUnit.from_read(EPD(0x6284B8));
+    if (selectedUnit.unitType == $U(c.DUCHY_BUILDING)) {
+        const duchyIndex = c.getDuchyIndexFromUnit(selectedUnit.ptr);
+        if (duchyIndex == 0) {
+            sprintf(GetMapStringAddr("Duchy"), "\x04Duchy of \x1FMiddlesex");
+        }
+        else if (duchyIndex == 1) {
+            sprintf(GetMapStringAddr("Duchy"), "\x04Duchy of \x1FCornwall");
+        }
+        else if (duchyIndex == 2) {
+            sprintf(GetMapStringAddr("Duchy"), "\x04Duchy of \x1FWales");
+        }
+    }
+    const playerIncome = c.GetPlayerSupply(0, c.INCOME_EXPENSES, c.INCOME);
+    const playerManpower = c.GetPlayerSupply(0, c.MANPOWER, c.MANPOWER_LEVEL);
+    const playerExpenses = c.GetPlayerSupply(0, c.INCOME_EXPENSES, c.EXPENSES);
+    sprintf(GetTBLAddr(c.LOCAL_INCOME_STRING), "{}", "\x12Local Income: #\x14               ");
+    sprintf(GetTBLAddr(c.MANPOWER_STRING), "{}{}{}", "\x12Manpower: ", playerManpower, "\x14         ");
+    sprintf(GetTBLAddr(c.LOYALTY_STRING), "\x10Capital");
+    sprintf(GetTBLAddr(c.ALL_INCOME_STRING), "{}{}{}", "\x12All Income: ", playerIncome, "\x14           ");
+    sprintf(GetTBLAddr(c.ALL_EXPENSES_STRING), "{}{}{}", "\x12All Expenses: ", playerExpenses, "\x14               ");
+
     // Duchy state management logic that runs every frame
     checkCyberneticsCoreQueues();
     

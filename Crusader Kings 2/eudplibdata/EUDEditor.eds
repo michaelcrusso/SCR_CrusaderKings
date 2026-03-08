@@ -1,7 +1,7 @@
 [main]
 
 input: ..\Map\Crusader Kings.scx
-output: C:\Users\Michael\OneDrive\Documents\StarCraft\Maps\SCRCrusaderKings\Crusader Kings EUDDraft.scx
+output: C:\Users\Michael\GitHub\SCR_CrusaderKings\_StarcraftClassic\Maps\ckalpha.scx
 
 
 [EUDEditor.py]
@@ -9,8 +9,8 @@ output: C:\Users\Michael\OneDrive\Documents\StarCraft\Maps\SCRCrusaderKings\Crus
 [TriggerEditor.eps]
 
 [dataDumper]
-C\:\Users\Michael\OneDrive\Desktop\Utils\EUD Editor SE\Data\temp\stat_txt.tbl : 0x6D5A30, copy
-C\:\Users\Michael\OneDrive\Desktop\Utils\EUD Editor SE\Data\temp\RequireData : 0x58D740, copy
+C\:\Users\Michael\GitHub\SCR_CrusaderKings\_EUD.EditorSE\Data\temp\stat_txt.tbl : 0x6D5A30, copy
+C\:\Users\Michael\GitHub\SCR_CrusaderKings\_EUD.EditorSE\Data\temp\RequireData : 0x58D740, copy
 [unlimiter]
 
 [eudTurbo]
@@ -19,4 +19,7 @@ C\:\Users\Michael\OneDrive\Desktop\Utils\EUD Editor SE\Data\temp\RequireData : 0
 [../../duchies.eps]
 [../../economy.eps]
 [../../initialization.eps]
+[../../military.eps]
+[../../diplomacy.eps]
+[../../events.eps]
 

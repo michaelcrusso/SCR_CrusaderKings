@@ -1,1 +1,1 @@
-C:\Users\Michael\GitHub\EUDDraft\euddraft.exe CK2.edd
+.\euddraft\euddraft.exe CK2.edd

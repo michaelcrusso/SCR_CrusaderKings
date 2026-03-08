@@ -1,2 +1,4 @@
-C:\Users\Michael\OneDrive\Documents\StarCraft\Maps\SCRCrusaderKings\Crusader Kings 2.e2s
 C:\Users\Michael\OneDrive\Documents\StarCraft\Maps\SCRCrusaderKings\Crusader Kings 2\Crusader Kings 2.e2p
+C:\Users\Michael\OneDrive\Documents\StarCraft\Maps\SCRCrusaderKings\Crusader Kings 2.e2s
+C:\Users\Michael\GitHub\SCR_CrusaderKings\Crusader Kings 2\Crusader Kings 2.e2s
+C:\Users\Michael\GitHub\SCR_CrusaderKings\Crusader Kings 2\Crusader Kings 2.e2p

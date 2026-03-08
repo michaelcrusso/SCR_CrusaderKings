@@ -149,11 +149,16 @@ function beforeTriggerExec() {
                     enabledCount++;
                 }
             }
+            if (unit.unitID == $U("Terran Physics Lab")) {
+                // Swap placeholders for our "Sea Lane" unit.
+                setloc($L("County Loc Universal"), unit.posX, unit.posY);
+                RemoveUnitAt(1, "Terran Physics Lab", $L("County Loc Universal"), P12);
+                CreateUnit(1, "Independent Starport", $L("County Loc Universal"), P8);
+                GiveUnits(All, "Independent Starport", P8, $L("Anywhere"), P12);
+            }
         }
     }
 }
-
-
 function afterTriggerExec() {
     // Initialization logic that runs every frame after triggers
     // Auto-select nation for testing (skip manual selection)

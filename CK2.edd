@@ -1,6 +1,6 @@
 [main]
 input: Crusader Kings.scx
-output: Crusader Kings EUD.scx
+output: ckalpha.scx
 
 [.\Crusader Kings 2\eudplibdata\EUDEditor.py]
 [.\Crusader Kings 2\eudplibdata\tempcustomText.py]
@@ -12,6 +12,7 @@ output: Crusader Kings EUD.scx
 .\Crusader Kings 2\Required\RequireData : 0x58D740, copy
 
 [eudTurbo]
+[unlimiter]
 [constants.eps]
 [duchies.eps]
 [economy.eps]

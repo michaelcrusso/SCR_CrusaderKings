@@ -139,6 +139,7 @@ Responsibilities (see [strategy/wars-diplomacy-occupation.md](strategy/wars-dipl
 | [strategy/unit-metadata-and-cunit.md](strategy/unit-metadata-and-cunit.md) | Sidecar metadata, ownership rules |
 | [strategy/wars-diplomacy-occupation.md](strategy/wars-diplomacy-occupation.md) | Wars, fronts, sieges bridge |
 | [strategy/priority-experiments.md](strategy/priority-experiments.md) | Ordered technical experiments |
+| [strategy/engine-delegation-and-attrition.md](strategy/engine-delegation-and-attrition.md) | Prefer engine timers; `removeTimer` supply/attrition |
 | [strategy/handoff-virtual-countries-ai.md](strategy/handoff-virtual-countries-ai.md) | Archived research handoff |
 
 ---

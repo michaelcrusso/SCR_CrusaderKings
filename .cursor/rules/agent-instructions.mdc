@@ -21,11 +21,19 @@ Always consider these epScript performance characteristics when providing code s
 - **Memory Usage**: EUDVariable (72 bytes), EUDLightVariable (4 bytes) - prefer light variables for simple counters
 - **Trigger Types**: Use `RawTrigger()` for static conditions/actions, `Trigger()` only when variables are involved
 
+## ENGINE DELEGATION (PREFERRED PATTERN)
+Prefer handing continuous arithmetic and background simulation to the StarCraft engine; use epScript to arm, disarm, and evaluate state—not to re-implement clocks every frame.
+- Prefer native fields/behaviors that already tick (e.g. CUnit `removeTimer` for timed life / supply fuse, engine HP, orders, pathfinding) over virtual per-frame sidecar timers when SCR allows.
+- Prefer edge + threshold logic (enter/leave territory, timer ≤ N) and scoped `UnitGroup` scans over full-map `EUDLoopCUnit` every frame.
+- Do not invent cloak/energy regen offset fights or Broodling-style “mana” systems without reading [_docs/strategy/engine-delegation-and-attrition.md](mdc:_docs/strategy/engine-delegation-and-attrition.md); Broodling’s bar is `removeTimer`, not spellcaster energy.
+- Label offset-level / EUD-Book claims clearly when not named in `_Reference`; validate with Michael’s playtest.
+
 ## COMMON PITFALLS TO AVOID
 - Don't suggest variable-to-variable operations without mentioning performance cost
 - Don't use regular variables for simple boolean flags (use EUDLightBool instead)
 - Don't forget that epScript only supports 32-bit unsigned integers
 - Always consider if constants can be used instead of variables
+- Don't virtualize engine-native countdowns/regen when an arm/disarm + threshold pattern would suffice
 
 ## REFERENCE DOCUMENTS AND WHEN TO USE THEM
 

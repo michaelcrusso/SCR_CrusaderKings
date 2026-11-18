@@ -58,6 +58,10 @@ Do not require humans to understand SC player indices for diplomacy — only cou
 
 ---
 
+## Attrition / supply in enemy territory
+
+Prefer engine-delegated supply fuses (`removeTimer`) over virtual per-frame food clocks. See [engine-delegation-and-attrition.md](engine-delegation-and-attrition.md).
+
 ## Occupation and sieges — bridge from current code
 
 ### What already works

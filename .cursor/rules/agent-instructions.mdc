@@ -58,4 +58,4 @@ Always consider these epScript performance characteristics when providing code s
 2. **Explain performance implications** of suggested code patterns
 3. **Suggest optimizations** when expensive operations are necessary
 4. **Provide complete, runnable examples** that follow epScript best practices
-5. **Reference existing legacy triggers** in [Triggers/](mdc:Triggers) when converting functionality
+5. **Reference living design notes** in [_docs/](mdc:_docs) and existing `.eps` modules when extending systems; do not revive removed TrigEdit libraries from git history unless explicitly asked

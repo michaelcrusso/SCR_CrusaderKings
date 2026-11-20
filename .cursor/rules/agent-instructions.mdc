@@ -1,69 +1,78 @@
 ---
-description: 
-globs: 
+description: TrigScript-first agent instructions for the SC:R Crusader Kings map
+globs:
 alwaysApply: true
 ---
-# Agent Instructions for epScript StarCraft: Remastered Project
+# Agent Instructions for TrigScript StarCraft: Remastered Project
 
 ## PROJECT SCOPE
-In this project we will be writing code to create a Starcraft: Remastered map. We want to start over from scratch and generate new triggers using epScript, a new pseudo-code abstracted language which uses Java-like syntax, which will compile down to classic Starcraft triggers that can be executed within the game. We will NOT be writing in any other language, and so we must always confine all queries in this project to this scope and refer closely back to the documentation below.
+We are building a StarCraft: Remastered UMS map with **TrigScript** (TypeScript that becomes classic triggers and/or in-game `program()` code via scmJS). Prefer TrigScript for all new trigger/logic work.
+
+Legacy **epScript / euddraft** sources and references remain in-tree for migration only. Do not expand the epScript surface unless Michael explicitly asks. We are **not** shipping true game mods (no custom `units.dat` MPQ for players); map-local Remastered EUD / TrigScript memory writes are the intended path for unit-table changes.
 
 ## AI ASSISTANT ROLE
-You will help me write and parse ONLY epScript code, as well as instruct me in the limitations of epScript and potential optimizations, and help walk me through the build/compilation process. If possible, try to cite/reference where you've acquired context information specifically, or otherwise indicate whether it is a best-guess/approximation based on standard programming practices. DO NOT EVER run a build via build.bat. Ask me to share output with you for debugging purposes.
+- Help write and reason about **TrigScript** (`trigger()` / `program()`), scmJS workflow, and map-local EUD via TrigScript memory APIs.
+- Cite where context came from (local docs below, scmJS docs, or mark as best-guess).
+- Do **not** run `build.bat` or assume euddraft. Prefer `scmjs` / editor Save+build when discussing builds; ask Michael to share CLI or editor Output when debugging.
+- During migration, epScript snippets are OK only for comparison or porting notes.
 
-## EPS STRUCTURE CONSIDERATIONS
-All user-defined functions must be declared BEFORE the plugin lifecycle functions (onPluginStart, beforeTriggerExec, afterTriggerExec).
+## TRIGSCRIPT STRUCTURE
+- Script entry is `main.ts` (and imports); files live in the map archive under `trigscript\` once integrated with scmJS.
+- Prefer `trigger()` for ordinary Trigger-Editor-equivalent logic that must play on every StarCraft version.
+- Prefer `program(() => { … })` for Remastered in-game logic (variables, loops, units, timers, keys/chat). Frame loops typically use `while (true) { …; sleep(frames(1)); }` / `await nextFrame()` — see coming-from-eudplib notes in the TrigScript docs.
+- User helpers belong in modules imported by `main.ts`; there is no euddraft plugin lifecycle (`onPluginStart` / `beforeTriggerExec`).
 
-## CRITICAL PERFORMANCE CONSIDERATIONS
-Always consider these epScript performance characteristics when providing code suggestions, but only mention them when it is pertinent:
-- **Cheap Operations** (1 trigger): `var += constant`, `var = constant`, comparisons with constants
-- **Expensive Operations** (30+ triggers): `var1 = var2`, `var1 += var2`, any variable-to-variable operations
-- **Memory Usage**: EUDVariable (72 bytes), EUDLightVariable (4 bytes) - prefer light variables for simple counters
-- **Trigger Types**: Use `RawTrigger()` for static conditions/actions, `Trigger()` only when variables are involved
+## MEMORY AND TABLE EDITS (CRITICAL)
+Prefer TrigScript's memory abstractions over raw address soup when a named API exists. Documented in [trigscript-language.md](mdc:docs/trigscript-reference/trigscript-language.md) (section "The game's tables and memory"):
+
+1. **`stats(...)`** — named reads/writes of the game's unit / weapon / upgrade / tech / player tables (costs, weapons, some flags, `speed`, names, etc.). Prefer this for table patches that fit the published field list. Only Remastered-validated fields are exposed; hover/docs say what each does. Writes generally last for the rest of the game.
+2. **`memory.*`** — named game values that are not table rows (e.g. `memory.game.frame`, map size, vision countdown). Prefer these over raw addresses when listed.
+3. **`memory(address, comparison, value)` / `setMemory(address, modifier, value)`** — full EUD escape hatch for any address. Use when `stats` / `memory.*` cannot express the change (deep flingy/image/iscript pointer work, undocumented fields, bulk DAT diffs). Keep addresses commented with what they mean; validate on Remastered playtest.
+4. **Do not** propose scmJS **Mod Editor** / `scmjs mod` packs as the shipping path for unit data — that is a real mod, not map-local EUD. Editor data sets may still be used for *drawing* if Michael chooses; distribution remains map-only unless he says otherwise.
+5. Label unverified offset-level claims clearly; prefer named APIs from the local TrigScript reference over folklore.
+6. DatEdit / Firegraft patches from the eudeditor-linux GUI export to `trigscript/eud-patches/` as `eud-patches.json` (see [eud-editor-export.md](mdc:docs/eud-editor-export.md)). Phase 1 applies those ops with `setMemory`; later lift into `stats()` where metadata allows.
 
 ## ENGINE DELEGATION (PREFERRED PATTERN)
-Prefer handing continuous arithmetic and background simulation to the StarCraft engine; use epScript to arm, disarm, and evaluate state—not to re-implement clocks every frame.
-- Prefer native fields/behaviors that already tick (e.g. CUnit `removeTimer` for timed life / supply fuse, engine HP, orders, pathfinding) over virtual per-frame sidecar timers when SCR allows.
-- Prefer edge + threshold logic (enter/leave territory, timer ≤ N) and scoped `UnitGroup` scans over full-map `EUDLoopCUnit` every frame.
-- Do not invent cloak/energy regen offset fights or Broodling-style “mana” systems without reading [_docs/strategy/engine-delegation-and-attrition.md](mdc:_docs/strategy/engine-delegation-and-attrition.md); Broodling’s bar is `removeTimer`, not spellcaster energy.
-- Label offset-level / EUD-Book claims clearly when not named in `_Reference`; validate with Michael’s playtest.
+Prefer handing continuous arithmetic and background simulation to the StarCraft engine; use TrigScript to arm, disarm, and evaluate state—not to re-implement clocks every frame.
+- Prefer native fields/behaviors that already tick (e.g. unit `removeTimer` / timed life, engine HP, orders, pathfinding) over virtual per-frame sidecar timers when SCR allows.
+- Prefer edge + threshold logic and scoped unit queries (`unitsOf` / filters) over full-map unit sweeps every frame unless necessary.
+- Do not invent cloak/energy-regen offset fights or Broodling-style “mana” systems without reading [engine-delegation-and-attrition.md](mdc:docs/strategy/engine-delegation-and-attrition.md); Broodling’s bar is timed life / `removeTimer`, not spellcaster energy.
+- Validate Remastered behaviour with Michael’s playtest when touching memory-level unit fields.
 
-## COMMON PITFALLS TO AVOID
-- Don't suggest variable-to-variable operations without mentioning performance cost
-- Don't use regular variables for simple boolean flags (use EUDLightBool instead)
-- Don't forget that epScript only supports 32-bit unsigned integers
-- Always consider if constants can be used instead of variables
-- Don't virtualize engine-native countdowns/regen when an arm/disarm + threshold pattern would suffice
+## COMMON PITFALLS
+- Do not assume epScript performance model (`EUDVariable` vs light vars, var-to-var trigger cost). TrigScript programs have a different cost model; consult local TrigScript docs and measure when unsure.
+- Do not invent `stats()` fields that are not in the documented table.
+- Prefer `trigger()` when classic-client compatibility matters; `program()` is Remastered-only.
+- Do not revive removed TrigEdit libraries from git history unless explicitly asked.
+- Keep living design notes in `docs/strategy/` in sync with intended systems when extending them.
 
-## REFERENCE DOCUMENTS AND WHEN TO USE THEM
+## REFERENCE DOCUMENTS
 
-- [epScript-Reference.md](mdc:_Reference/epScript-Reference.md) The main entry point and getting started guide that covers environment setup, project structure, and basic workflow. Reference this when setting up new projects, understanding the .edd/.eps file relationship, or learning about compilation and execution order.
+### TrigScript / scmJS (primary)
+Local mirror of upstream scmJS markdown (https://docs.scmjs.dev/ / [scm-js/scm-js](https://github.com/scm-js/scm-js) `docs/`):
 
-- [Syntax.md](mdc:_Reference/Syntax.md) Complete language syntax reference covering basic constructs, data types, control flow, and operators. Essential for understanding epScript's Java-like syntax, variable declarations, conditionals, loops, and how it differs from traditional programming languages (32-bit unsigned integers only, case sensitivity, etc.).
+- [trigscript.md](mdc:docs/trigscript-reference/trigscript.md) — Quick start, `trigger`/`program`, workspace, testing/Simulate, coming from eudplib, reference
+- [trigscript-language.md](mdc:docs/trigscript-reference/trigscript-language.md) — Language of programs; **tables and memory**, units, events, tasks
+- [trigscript-library.md](mdc:docs/trigscript-reference/trigscript-library.md) — Standard library modules (timers, UI, etc.)
+- [triggers.md](mdc:docs/trigscript-reference/triggers.md) — Classic conditions/actions and EUD notes
+- [cli.md](mdc:docs/trigscript-reference/cli.md) — `scmjs` CLI, git/CI, in-game tests
+- [ai-tools.md](mdc:docs/trigscript-reference/ai-tools.md) — MCP / editor AI tooling
+- [guide.md](mdc:docs/trigscript-reference/guide.md) / [installing.md](mdc:docs/trigscript-reference/installing.md) — Editor usage and install
+- [game-data.md](mdc:docs/trigscript-reference/game-data.md) / [file-formats.md](mdc:docs/trigscript-reference/file-formats.md) / [chk-format.md](mdc:docs/trigscript-reference/chk-format.md) — Data and file formats
+- [README.md](mdc:docs/trigscript-reference/README.md) — Index of this mirror
 
-- [Use-of-Variables.md](mdc:_Reference/Use-of-Variables.md) Detailed guide to variable types, scope, and mathematical operations. Covers basic variable declaration, static variables, and the fundamental concepts of epScript's 32-bit unsigned integer system.
+### epScript (migration / compatibility only)
+- [docs/epscript-reference/](mdc:docs/epscript-reference/epScript-Reference.md) — Legacy euddraft/epScript docs; use when porting old `.eps` modules
 
-- [Use-of-Functions.md](mdc:_Reference/Use-of-Functions.md) Function declaration, parameters, return values, and type annotations. Reference when creating reusable code, understanding parameter passing, and working with multiple return values through tuple unpacking.
+### EUD Editor export
+- [docs/eud-editor-export.md](mdc:docs/eud-editor-export.md) — EE2 → `trigscript/eud-patches/` JSON convention (no euddraft)
 
-- [Use-of-Objects.md](mdc:_Reference/Use-of-Objects.md) Object-oriented programming features including object declarations, constructors/destructors, and instance creation (static vs dynamic allocation). Use when creating complex data structures or when traditional variables aren't sufficient for your game logic.
-
-- [Understanding-Strings.md](mdc:_Reference/Understanding-Strings.md) Comprehensive string handling covering compile-time strings (py_str), map strings (TrgString), string data (Db), and TBL strings. Essential for text display, string manipulation, and understanding the different string types and their performance characteristics.
-
-- [Built-in-Functions.md](mdc:_Reference/Built-in-Functions.md) Massive reference (3,869 lines) of all available functions including StarCraft conditions/actions, extended functions, memory operations, math functions, and utility functions. Your primary reference when implementing game mechanics, trigger logic, or any StarCraft-specific functionality.
-
-- [Built-in-Object-Types.md](mdc:_Reference/Built-in-Object-Types.md) Documentation of core object types like EUDVariable, EUDLightVariable, EUDLightBool, EUDArray, StringBuffer, and other data structures. Critical for understanding memory usage (EUDVariable: 72 bytes, EUDLightVariable: 4 bytes) and when to use each type.
-
-- [Built-in-Object-Types-(Extended).md](mdc:_Reference/Built-in-Object-Types-(Extended).md) Extended object types and advanced data structures beyond the basic ones. Use for specialized data handling or advanced programming patterns.
-
-- [Constants-Reference.md](mdc:_Reference/Constants-Reference.md) Quick reference for game constants, modifiers, and enums. Essential for trigger conditions, resource types, player references, and other StarCraft-specific values.
-
-- /_Reference/Constants Reference/ (directory) - Detailed constant references for specific game elements (units, weapons, tech, upgrades, etc.). Reference when working with specific StarCraft entities and need their exact identifiers.
-
-- /_Reference/Code Examples/ (directory) - Contains practical examples including position manipulation, trigger usage, supply limit changes, and UI menus. Use these as templates and learning resources for common game development patterns.
+### Design notes
+- [docs/roadmap.md](mdc:docs/roadmap.md) and [docs/strategy/](mdc:docs/strategy/) — Living CK design and architecture notes
 
 ## WORKFLOW GUIDANCE
-1. **Always reference appropriate documentation** before providing code solutions
-2. **Explain performance implications** of suggested code patterns
-3. **Suggest optimizations** when expensive operations are necessary
-4. **Provide complete, runnable examples** that follow epScript best practices
-5. **Reference living design notes** in [_docs/](mdc:_docs) and existing `.eps` modules when extending systems; do not revive removed TrigEdit libraries from git history unless explicitly asked
+1. Prefer TrigScript docs under `docs/trigscript-reference/` before proposing APIs.
+2. Prefer `stats` / `memory.*` before raw `setMemory`.
+3. Prefer engine-native behaviour over per-frame reimplementation.
+4. Give complete, runnable TrigScript examples that match scmJS docs.
+5. When touching systems described in `docs/strategy/`, align with those notes; do not resurrect deprecated TrigEdit stacks unless asked.

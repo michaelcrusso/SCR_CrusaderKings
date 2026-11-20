@@ -1,0 +1,177 @@
+# The library
+
+`@scm-js/core` is the editor's map code as an npm package: open a `.scm`, `.scx` or
+`.chk`, read and change its triggers, strings, units, locations and settings, run Check
+Map, and write the map back. It is the same code scmJS runs, built from the same source,
+so a map reads and writes through the library exactly as it does in the editor of the same
+version. It runs in Node.js and in the browser, and needs no game data.
+
+Use it when the editor and the [command line](cli.md) do not do the thing you want: a
+script that changes forty maps the same way, a build step that generates triggers, a check
+of your own in CI, a tool of your own on top of the format.
+
+```sh
+npm install @scm-js/core
+```
+
+Node.js 22.12 or newer. The package is ES modules with TypeScript declarations, and its
+two dependencies are [mopaq](https://github.com/jeany55/mopaq), the MPQ library the editor
+reads archives with, and [`@scm-js/mod`](https://github.com/scm-js/mod), the library it
+reads mods with.
+
+## A first script
+
+Open a map, say what is in it, run Check Map, change the name and write it out:
+
+```js
+import { readFile, writeFile } from "node:fs/promises";
+import { openMapBytes, writeMapBytes, scenarioName, setScenarioName, mapStatistics, statisticsText, validateScenario } from "@scm-js/core";
+
+const map = await openMapBytes(await readFile("(2)Destination.scx"), "(2)Destination.scx");
+const scn = map.scenario;
+
+console.log(scenarioName(scn));
+console.log(statisticsText(mapStatistics(scn, null, null, null)));
+for (const issue of validateScenario(scn, { extras: map.extras })) console.log(issue.level, issue.where, issue.text);
+
+setScenarioName(scn, "Destination, revised");
+await writeFile("out.scx", await writeMapBytes(scn, { format: "scx", extras: map.extras, stored: map.stored }));
+```
+
+`openMapBytes` does what File ▸ Open does: reads the archive, parses the scenario, keeps
+the other members (sounds, scripts, anything else) in `extras`, restores a built map to
+the map it was built from, and puts the warnings the editor would show in
+`scenario.warnings`. `writeMapBytes` does what Save does, with the same options —
+compression, which sections to strip, and the rest — and everything kept and uncompressed
+when none are given. Pass `extras` and `stored` back in, or the sounds are lost.
+
+## What is in it
+
+The `Scenario` object is the map: `width`, `height`, `era` (the tileset), `strings`,
+`units`, `locations`, `triggers`, `briefing`, the player tables, the settings tables, the
+terrain. Everything else is a function that reads or changes one.
+
+| Area | Functions |
+| --- | --- |
+| Files | `openMapBytes`, `writeMapBytes`; `loadMap` and `readMembers` for the archive itself; `parseScenario` and `serializeScenario` for a bare scenario, `encodeSection` for the bytes one section of it would be saved as; `createScenario` for a new map. `openMapBytes` refuses bytes that hold no scenario (no section a map has), as the editor does. A member stored in a form the writer cannot make, such as a sound StarEdit stored with ADPCM, is written back as it was stored while its bytes are unchanged: `storedFormOf` says whether bytes have such a form, `keepStoredForm` gives bytes one (a folder of a map's files does, from what it kept), `storedMethods` and `storedInOtherForm` read a member's sectors, and `packStored`, `relocate` and `fileKey` move a stored member and give it the key its new place needs |
+| Describing | `scenarioName`, `scenarioDescription`, `mapVersionOf`, `mapStatistics`, `statisticsText`, `findInScenario` |
+| Check Map | `validateScenario`, `issueCounts` — every rule the editor runs that needs no game data |
+| Triggers | `readTriggers` / `applyTriggers`, `readBriefing` / `applyBriefing`, `newTrigger`, `newCondition`, `newAction`, `triggerNames`, `triggerUsage`, `triggerComment`; the numbers a record holds, by name (`ConditionType`, `ActionType`, `PlayerGroup`, `Comparison`, `SwitchState`, `SwitchAction`, `SetModifier`, `ResourceType`, `UnitClass`); the text form, `triggersToText` / `triggersFromText`; `.trg` files, `encodeTrg` / `decodeTrg`; the condition and action definitions |
+| Strings | `readStrings` / `applyStrings`, `stringUsages`, `unusedStrings`, `deleteUnused`; the table as text, `formatStringTable` / `parseStringTable`; `plainText` to drop colour codes; `decodeText` for bytes in a map's encoding (`TEXT_ENCODINGS`) |
+| Units | `addUnits`, `removeUnits`, `updateUnits`, `moveUnits`, `makeUnit`, `unitAt`, `unitsInBox`, `isResource` |
+| Locations | `addLocation`, `editLocation`, `removeLocations`, `moveLocations`, `locationName`, `usedLocations` |
+| Settings | `readPlayerSettings` / `applyPlayerSettings`, forces, unit, upgrade and tech settings, `changeMapVersion`, `changeTextEncoding`; `defaultUnitSettings` and its kin, each table as a map has it before anyone changes it; `locationSlots`, how many locations a revision holds, `ANYWHERE_INDEX` and `isLocationUsed` |
+| The map | `resizeScenario` (and `resizeOffset`, where the anchor moves the old map), `placeStartLocations`, `setScenarioName`, `setScenarioDescription`; `flatTerrain` and `baseTerrain`, the flat ground a new map is filled with |
+| Names | `unitName`, `upgradeName`, `techName`, `weaponName`, `TILESETS`, `PLAYER_TYPES`, `PLAYER_RACES`, `PLAYER_COLORS`; a race by its number with `raceLabel(id, races)`, which names the game's eight and those a data set declares, and says `Race 69` for any other |
+| Races a mod adds | `normalizeRaces`, the rule a declared table follows (`mod.json`'s `races`: rows with numbers 8 to 255, a name, an optional `letter` and `like`); `raceCandidates`, the hints a mod's files give (names past the game's own in `rez\network.tbl`, letters with a console picture of their own), never names in themselves; `racePlaysAs`, which of the game's three races a list of unit types plays as, by the group flags most of them carry ([Races a mod adds](mods.md#races-a-mod-adds)) |
+| The game's files | `loadTileset`, `megatileForTile`, `tileGroupOf` and `drawMegatile` for a tileset's graphics and its ground, `decodeUnitsDat` and `unitGeometry` for the units' sizes, `decodeFlingyDat`, `decodeSpritesDat`, `decodeImagesDat`, `decodeIscript` and `walkSpeed` for how fast a unit walks, `displayColorHex` for a player's colour — for files you read from your own copy of the game |
+| Terrain and doodads | `paintIsom` and `paintIsomDiamonds`, the isometric brush (one diamond, or any set of them in one stroke), `checkIsom`; `buildDoodadCatalogue`, `checkDoodadPlacement` and `placeDoodad` for a doodad placed as StarEdit allows; `symmetryImages` for the editor's symmetry modes — these need a tileset you read from your own copy of the game |
+| Blocks and pieces | A tileset as its sheet, a group a row and 16 slots wide (`sheetRows`, `blockFromRect`); a block of tiles laid once or repeated as a pattern (`layBlock`, `layPattern`, `PatternStroke`); the pieces maps lay whole, counted a join of the sheet at a time over as many maps as you like (`gatherEvidence`, `mergeEvidence`, `cutPieces`, `pieceBlock`, `laidPieceAt`, and `learnFromMaps` for a folder of map files); the same tile twice, by picture and flags (`uniqueTiles`, `sameTileKey`), and pieces that are copies folded into one (`collapsePieces`); `tableHash`, the key a tileset's table is known by; `addedGroupsFrom`, where the groups a data set adds begin. The cut needs only a tileset's CV5; folding copies needs its graphics, read from your own copy of the game ([Ground a mod adds](guide.md#ground-a-mod-adds)) |
+| Terrain from other tilesets | Which pictures of one tileset are copies of another's, redrawn or not (`copiesOf`, `picturesOf`), and the table from the other tileset's tiles to this one's (`borrowTable`, or `providedTable` from pairs you know; `encodeBorrowTable` / `decodeBorrowTable` to keep it); the terrains it makes paintable (`borrowableTerrains`); the other tileset's isometric brush laying them here, stroke by stroke (`BorrowStroke`), and its record of the diamonds kept inside the map (`borrowMember`, `latticeOf`, `encodeBorrowLattice`, `resizeBorrowMember`). Both tilesets' graphics are needed, read from your own copy of the game and the mod ([Terrain from other tilesets](guide.md#terrain-from-other-tilesets)) |
+| Copied terrain | A tileset's own terrain held again at another height with its edge pieces: the blocks found from the tileset's files and gated (`findCopyBlocks`, `gateBlock`; `encodeCopyBlocks` / `decodeCopyBlocks` to keep them), the grounds a block is drawn for (`rankGrounds`, `paintCount`, `chooseOuter`), the brush laying it through a lattice of the tileset's own (`CopyStroke` with `copyTable`), laying it again after another stroke (`relayCopies`), and the record kept inside the map (`COPY_MEMBER`, `encodeCopyMember`, `decodeCopyMember`, `resizeCopyMember`) ([Copied terrain](guide.md#copied-terrain)) |
+| Mods | Every table read and written in the layout it has (`decodeDat`, `encodeDat`, `datToText`, `datFromText`), and the string tables, GRPs, PCX files, overlays, iscript, AI scripts and `.graft` files both ways; sounds, `decodeWav` (any WAV the game or a sound tool writes, the game's IMA ADPCM included, to samples) and `encodeWav` (samples to plain PCM); a GRP as a PNG sheet (`grpToPng`, `pngToGrp`); the [mod folder](mods.md)'s form (`placeOf`, `memberOf`, `renderMember`, `packFile`), `checkMod` and `diffMods`. Reading a mod is [`@scm-js/mod`](https://github.com/scm-js/mod)'s, a dependency: `readMod` reads a mod's files (a folder, an `.mpq`, a self-executing `.exe`, a `.zip`) into a description of its layers, its code and its hash (`identity`: the hash a mod is known by everywhere, without its code, and the earlier forms a replay may name it by), with `MOD_MESSAGES` and `renderMessage` for every sentence the reader says (to translate by its English template). This package passes on the names it had for parts of that: `exeArchive` (with `kind` and `archive` beside the reader's `form`, `bytes` and `at`), `readZip`, `programEnd`, `isMpq`, `isZip`, `isExe`, `probeNames`, `modRoot`, `gameName`, `GAME_FOLDERS`, `GAME_ARCHIVES`, `gameCopyFiles`, `SYSTEM_FILES`, `isSystemFile`, `hashLines`, `hashLinesAsWere`, `isSystemLine`, `pluginLine`, `firegraftLine`, `isPluginFile`, `isModCode`, `fileDigest`, `ModSourceError`. `modHash`, `modHashOfDigests`, `dataSetHash`, `dataSetHashOfDigests`, `gameLine` and `isFiregraftProject` keep their signatures and are deprecated: they give the hash of the files given (game files, plugin files, the FireGraft project) by the reader's lines, while `readMod(…).identity` also has lines for a patcher's own plugins and the libraries a mod's plugins load. `probeNames` now takes an opened archive and returns a promise |
+| Plugins | `validateManifest`, `PLUGIN_API_VERSION` — what the editor checks a plugin's manifest for |
+
+The declarations file says the rest: every function is typed, and the types are the
+editor's own, so `TriggerRecord`, `UnitRecord`, `LocationRecord` and `Issue` are what the
+[plugin API](plugins.md) calls them.
+
+## How an edit works
+
+Reading is a plain call. Changing has two shapes, both the editor's.
+
+**Read, change, apply.** The settings and the trigger list come out as a value and go back
+with an `apply`. The apply marks the sections it touched so the next write includes them;
+changing `scenario.triggers` by hand does not.
+
+```js
+const triggers = readTriggers(scn);
+triggers.push(newTrigger());              // owned by All Players unless told otherwise
+applyTriggers(scn, triggers);
+```
+
+**Change lists.** Units and locations produce a list of changes, which `applyUnitChanges`
+or `applyLocationChanges` carries out — or undoes, with `"undo"`. That is the editor's
+undo history, and it is what makes a script's edit cheap to reverse.
+
+```js
+const serial = nextSerial(scn);
+const changes = addUnits(scn, [makeUnit(null, START_LOCATION, 0, 10 * 32, 10 * 32, serial)]);
+applyUnitChanges(scn, changes);
+```
+
+Positions are in pixels (a tile is 32). The `null` passed to `makeUnit` is the unit table
+from the game data; without it a unit gets no default resources or hit points, which is
+what a start location needs anyway.
+
+**By hand.** A field of the scenario can also be set directly, as long as the section it
+is written to is marked with `markDirty(scn, "SIDE")`; an unmarked change is not saved.
+The unit, upgrade and technology tables are each written to one or both of a pair (`UNIS`
+and `UNIx`, …) depending on the map's revision and what the file has already, and
+`unitSettingsSections(scn)`, `upgradeSettingsSections`, `upgradeRestrictionSections`,
+`techSettingsSections` and `techRestrictionSections` name the ones to mark.
+
+```js
+scn.playerRaces[0] = PlayerRace.Protoss;
+markDirty(scn, "SIDE");
+// after a change to scn.unitSettings:
+markDirty(scn, ...unitSettingsSections(scn));
+```
+
+## Triggers as text
+
+`triggersToText` gives the triggers in the text form the editor's trigger window and the
+TrigEdit plugin use, and `triggersFromText` reads it back, so triggers can live in a text
+file, be diffed, edited in any editor and put back:
+
+```js
+import { writeFile } from "node:fs/promises";
+await writeFile("triggers.txt", triggersToText(scn, readTriggers(scn)));
+// … later …
+applyTriggers(scn, triggersFromText(scn, await readFile("triggers.txt", "utf8")));
+```
+
+The [trigger reference](triggers.md) gives every condition and action in that form.
+Strings have the same pair, `formatStringTable` and `parseStringTable`.
+
+## What it does not do
+
+- **Nothing that needs the game data.** Terrain checks (a unit on ground it cannot stand
+  on), building counts, map pictures and the terrain tools need the tilesets and unit
+  tables that only the editor has. `mapStatistics` and `validateScenario` take `null` for
+  them and leave those parts out, as the command line does. The decoders are here, but no
+  game file is: `scmjs map preview` reads the tileset out of your copy of StarCraft and
+  draws with it.
+- **No plugin API.** The functions are the editor's, not `api.*`; a plugin's code does not
+  run here. A plugin can share logic with a script by putting it in a module both import.
+- **One language.** The library's own text — a warning, an issue — is English.
+- **Map text is bytes.** Strings come and go in the map's encoding (`changeTextEncoding`
+  switches it) and keep their colour codes; `plainText` strips them for display.
+
+## Versions
+
+The library's version is the editor's: `@scm-js/core` 0.9.0 reads and writes what scmJS
+0.9.0 does, and the two are published together. A map written by the library opens in the
+editor of the same version without a warning, and the other way round.
+
+The surface is what this page lists. A function stays once published; one that has to go
+is noted here first.
+
+## In the browser
+
+The package has no Node.js dependency, so it bundles into a page as it is. `openMapBytes`
+takes a `Uint8Array`, which is what a `File` gives after `arrayBuffer()`.
+
+## In the source
+
+For developers. The package is built from the editor's own modules, which is how it stays
+exactly the editor's code.
+
+| File | Does |
+| --- | --- |
+| `core/src/index.ts` | The whole public surface: one line per export, from the editor's modules |
+| `core/package.json` | The package; its version is written by the build from the editor's |
+| `scripts/build-core.mjs` | Builds `core/dist/index.mjs` (one module, mopaq and `@scm-js/mod` left as dependencies) and `core/dist/index.d.ts` (one declarations file) |
+| `src/editor/mapFile.ts` | `openMapBytes` and `writeMapBytes`: opening and saving without the browser's pickers |
+| `tests/core.test.ts` | That nothing behind the entry runs UI code, that the command line imports only what the entry exports, and that the entry opens, checks, rewrites and reopens the test maps |
+| [@scm-js/replay](https://github.com/scm-js/replay) | Replays, a package of their own |

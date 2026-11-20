@@ -141,6 +141,11 @@ Keep experiment harnesses out of production modules when possible (temporary hoo
 | E10 | | | |
 | E11 | | | |
 | E12 | | | |
+| A1 | | | `removeTimer` on levy types → countdown + remove at 0? |
+| A2 | | | `removeTimer = 0` disables timed removal? |
+| A3 | | | `<= N` preempt in before vs afterTriggerExec? |
+| A4 | | | Visible bar without DAT on non-Broodling levies? |
+| A5 | | | Territory edge + active levy group cheap enough? |
 
 ### Architecture implication (from E2–E4)
 
